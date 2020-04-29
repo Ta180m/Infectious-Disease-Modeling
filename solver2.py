@@ -8,7 +8,6 @@ from scipy.optimize import minimize
 import argparse
 import os
 
-# TODO - Parse arguments for different model options
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--mode', '-m', dest = 'mode', help = 'change the mode of the model (SIR, Linear, ESIR, SEIR); default: SIR', default = 'SIR', choices = ['SIR', 'Linear', 'ESIR', 'SEIR'])
@@ -20,16 +19,17 @@ parser.add_argument('--start', '-s', dest = 'start', default = '1/22/20', help =
 parser.add_argument('--end', '-e', dest = 'end', default = None, help = 'the date where the data stops (defaults to whereever the input data ends)')
 parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SIRE model; ignored otherwise); none by default')
 parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None, help = 'the number of days to predict the course of the disease (defaults to None, meaning the model will not predict beyond the given data)')
+parser.add_argument('--country', '-c', dest = 'country', default = 'US', help = 'the country that is being modeled (defaults to US)')
+parser.add_argument('--population', '-P', dest = 'population', default = '10000', help = 'the population of the model (defaults to 10000)')
 args = parser.parse_args()
 
-S_0 = 13500/13501
-I_0 = 1/13501
-R_0 = 0 # Both are equal to 0/13501
-E_0 = 0 # Both are equal to 0/13501
+S_0 = (int(args.population) - 1) / int(args.population)
+I_0 = 1 / int(args.population)
+R_0 = 0
+E_0 = 0
 
-# Running a model for 3.27  million population is quite hard, so here we've reduced the population to 13.5 thousand people, and modified
-# the actual stats to match
-correction_factor = 13502/3270000 if args.disease == 'COVID-19' else 1
+# Running a model for a million population is quite hard, so here we've reduced the population and modified the actual stats to match
+correction_factor = int(args.population) / 3270000 if args.country == 'US' else int(args.population) / 63710000 if args.country == 'Hong_Kong' else 1
 
 class Learner(object):
 	def __init__(self, country):
@@ -45,7 +45,7 @@ class Learner(object):
 		if args.end != None:
 			confirmed_sums = np.sum([reg.loc[args.start:args.end].values for reg in country_df.iloc], axis = 0)
 		else:
-			confirmed_sums = np.sum([reg.loc[args.start:].values for reg in country_df.iloc], axis = 0)
+			confirmed_sums = np.sum([reg.loc[[args.start:]].values for reg in country_df.iloc], axis = 0)
 		
 		if args.end != None:
 			new_data = pd.DataFrame(confirmed_sums, country_df.iloc[0].loc[args.start:args.end].index.tolist())
@@ -155,7 +155,7 @@ class Learner(object):
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
-			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
@@ -170,7 +170,7 @@ class Learner(object):
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
-			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
@@ -185,7 +185,7 @@ class Learner(object):
 			beta, gamma, mu = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu} R0: {beta/(gamma + mu)}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
-			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
@@ -202,7 +202,7 @@ class Learner(object):
 			beta, gamma, mu, sigma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu}, Sigma: {sigma} R0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
-			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
@@ -226,13 +226,13 @@ def compose_df(prediction, actual, correction_factor, index):
 		if data == 'Actual':
 			df_dict['Actual'] = filter_zeroes(actual * correction_factor)
 		elif data == 'S':
-			df_dict['S'] = prediction.y[0] * 13500
+			df_dict['S'] = prediction.y[0] * int(args.population)
 		elif data == 'I':
-			df_dict['I'] = prediction.y[1] * 13500
+			df_dict['I'] = prediction.y[1] * int(args.population)
 		elif data == 'R':
-			df_dict['R'] = prediction.y[2] * 13500
+			df_dict['R'] = prediction.y[2] * int(args.population)
 		elif data == 'E':
-			df_dict['E'] = prediction.y[3] * 13500
+			df_dict['E'] = prediction.y[3] * int(args.population)
 
 	return pd.DataFrame(df_dict, index=index)
 
@@ -247,8 +247,8 @@ def loss_linear(point, confirmed, recovered):
 		R = y[2]
 		return [-beta * S, beta * S - gamma * I, gamma * I]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/13500))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/13500))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_sir(point, confirmed, recovered):
@@ -260,8 +260,8 @@ def loss_sir(point, confirmed, recovered):
 		R = y[2]
 		return [-beta * S * I, beta * S * I - gamma * I, gamma * I]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/13500))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/13500))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_esir(point, confirmed, recovered):
@@ -273,8 +273,8 @@ def loss_esir(point, confirmed, recovered):
 		R = y[2]
 		return [mu - beta * S * I - mu * S, beta * S * I - gamma * I - mu * I, gamma * I - mu * R]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/13500))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/13500))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_seir(point, confirmed, recovered, exposed):
@@ -287,10 +287,10 @@ def loss_seir(point, confirmed, recovered, exposed):
 		E = y[3]
 		return [mu - beta * S * I - mu * S, beta * S * I - sigma * E - mu * E, sigma * E * I - gamma * I - mu * I, gamma * I - mu * R]
 	solution = solve_ivp(model, [0, size], [S_0,E_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/13500))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/13500))**2))
-	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/13500))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
+	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/int(args.population)))**2))
 	return sol_inf/3 + sol_rec/3 + sol_exp/3
 
-my_learner = Learner('Hong_Kong')
+my_learner = Learner(args.country)
 my_learner.train()
