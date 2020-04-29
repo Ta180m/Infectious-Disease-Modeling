@@ -45,7 +45,7 @@ class Learner(object):
 		if args.end != None:
 			confirmed_sums = np.sum([reg.loc[args.start:args.end].values for reg in country_df.iloc], axis = 0)
 		else:
-			confirmed_sums = np.sum([reg.loc[[args.start:]].values for reg in country_df.iloc], axis = 0)
+			confirmed_sums = np.sum([reg.loc[args.start:].values for reg in country_df.iloc], axis = 0)
 		
 		if args.end != None:
 			new_data = pd.DataFrame(confirmed_sums, country_df.iloc[0].loc[args.start:args.end].index.tolist())
