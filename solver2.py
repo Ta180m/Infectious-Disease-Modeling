@@ -157,7 +157,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'SIR':
 			optimal = minimize(
@@ -172,7 +172,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'ESIR':
 			optimal = minimize(
@@ -187,7 +187,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
 		elif args.mode == 'SEIR':
 			exposed_data = self.load_exposed(self.country)
@@ -204,13 +204,13 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
 		fig, ax = plt.subplots(figsize=(15, 10))
 		ax.set_title(f'{args.disease} cases over time ({args.mode} Model)')
 		df.plot(ax=ax)
 		fig.savefig(f"{args.out if args.out != None else args.disease}.png")
-		df.to_csv(f'out/{args.disease}-prediction.csv')
+		df.to_csv(f'{args.disease}-prediction.csv')
 
 def filter_zeroes(arr):
 	out = np.array(arr)
