@@ -14,9 +14,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', '-m', dest = 'mode', help = 'change the mode of the model (SIR, Linear, ESIR, SEIR); default: SIR', default = 'SIR', choices = ['SIR', 'Linear', 'ESIR', 'SEIR'])
 parser.add_argument('--data', '-d', dest = 'include_data', help = 'change the type of data to present in the graph (Actual, S, I, R, E); default: Actual S I R', nargs = '*', default = ['Actual', 'S', 'I', 'R'], choices = ['Actual', 'S', 'I', 'R', 'E'])
 parser.add_argument('--folder', '-f', dest = 'folder', default = 'data', help = 'the folder in which to find the data files; defaults to looking in the data folder')
-parser.add_argument('--disease', '-D', dest = 'disease', default = 'sars', help = 'the disease to model; defaults to sars')
+parser.add_argument('--disease', '-D', dest = 'disease', default = 'COVID-19', help = 'the disease to model; defaults to COVID-19')
 parser.add_argument('--out', '-o', dest = 'out', default = None, help = 'the name of the graph and csv files; defaults to the name of the disease')
-parser.add_argument('--start', '-s', dest = 'start', default = '2/1/2003', help = 'the date where the data starts (defaults to the start date of sars (1/22/20))')
+parser.add_argument('--start', '-s', dest = 'start', default = '1/22/20', help = 'the date where the data starts (defaults to the start date of COVID-19 (1/22/20))')
 parser.add_argument('--end', '-e', dest = 'end', default = None, help = 'the date where the data stops (defaults to whereever the input data ends)')
 parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SIRE model; ignored otherwise); none by default')
 parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None, help = 'the number of days to predict the course of the disease (defaults to None, meaning the model will not predict beyond the given data)')
@@ -29,7 +29,7 @@ E_0 = 0 # Both are equal to 0/13501
 
 # Running a model for 3.27  million population is quite hard, so here we've reduced the population to 13.5 thousand people, and modified
 # the actual stats to match
-correction_factor = 13502/3270000 if args.disease == 'sars' else 1
+correction_factor = 13502/3270000 if args.disease == 'COVID-19' else 1
 
 class Learner(object):
 	def __init__(self, country):
@@ -39,7 +39,7 @@ class Learner(object):
 		"""
 			Load confirmed cases
 		"""
-		df = pd.read_csv(f'{args.disease}-confirmed.csv')
+		df = pd.read_csv(f'{args.folder}/{args.disease}-Confirmed.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -59,7 +59,7 @@ class Learner(object):
 		"""
 			Load recovered cases
 		"""
-		df = pd.read_csv(f'{args.disease}-recovered.csv')
+		df = pd.read_csv(f'{args.folder}/{args.disease}-Recovered.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -73,7 +73,7 @@ class Learner(object):
 		"""
 			Load data for exposed persons 
 		"""
-		df = pd.read_csv(f'{args.disease}-exposed.csv')
+		df = pd.read_csv(f'{args.folder}/{args.disease}-Exposed.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -157,7 +157,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'SIR':
 			optimal = minimize(
@@ -172,7 +172,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'ESIR':
 			optimal = minimize(
@@ -187,7 +187,7 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
 		elif args.mode == 'SEIR':
 			exposed_data = self.load_exposed(self.country)
@@ -204,13 +204,13 @@ class Learner(object):
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
 			print(f'Predicted I: {prediction.y[1][-1] * 13500}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
 		fig, ax = plt.subplots(figsize=(15, 10))
 		ax.set_title(f'{args.disease} cases over time ({args.mode} Model)')
 		df.plot(ax=ax)
 		fig.savefig(f"{args.out if args.out != None else args.disease}.png")
-		df.to_csv(f'{args.disease}-prediction.csv')
+		df.to_csv(f'out/{args.disease}-prediction.csv')
 
 def filter_zeroes(arr):
 	out = np.array(arr)
