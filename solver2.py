@@ -14,9 +14,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--mode', '-m', dest = 'mode', help = 'change the mode of the model (SIR, Linear, ESIR, SEIR); default: SIR', default = 'SIR', choices = ['SIR', 'Linear', 'ESIR', 'SEIR'])
 parser.add_argument('--data', '-d', dest = 'include_data', help = 'change the type of data to present in the graph (Actual, S, I, R, E); default: Actual S I R', nargs = '*', default = ['Actual', 'S', 'I', 'R'], choices = ['Actual', 'S', 'I', 'R', 'E'])
 parser.add_argument('--folder', '-f', dest = 'folder', default = 'data', help = 'the folder in which to find the data files; defaults to looking in the data folder')
-parser.add_argument('--disease', '-D', dest = 'disease', default = 'COVID-19', help = 'the disease to model; defaults to COVID-19')
+parser.add_argument('--disease', '-D', dest = 'disease', default = 'sars', help = 'the disease to model; defaults to sars')
 parser.add_argument('--out', '-o', dest = 'out', default = None, help = 'the name of the graph and csv files; defaults to the name of the disease')
-parser.add_argument('--start', '-s', dest = 'start', default = '1/22/20', help = 'the date where the data starts (defaults to the start date of COVID-19 (1/22/20))')
+parser.add_argument('--start', '-s', dest = 'start', default = '2/1/2003', help = 'the date where the data starts (defaults to the start date of sars (1/22/20))')
 parser.add_argument('--end', '-e', dest = 'end', default = None, help = 'the date where the data stops (defaults to whereever the input data ends)')
 parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SIRE model; ignored otherwise); none by default')
 parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None, help = 'the number of days to predict the course of the disease (defaults to None, meaning the model will not predict beyond the given data)')
@@ -29,7 +29,7 @@ E_0 = 0 # Both are equal to 0/13501
 
 # Running a model for 3.27  million population is quite hard, so here we've reduced the population to 13.5 thousand people, and modified
 # the actual stats to match
-correction_factor = 13502/3270000 if args.disease == 'COVID-19' else 1
+correction_factor = 13502/3270000 if args.disease == 'sars' else 1
 
 class Learner(object):
 	def __init__(self, country):
@@ -39,7 +39,7 @@ class Learner(object):
 		"""
 			Load confirmed cases
 		"""
-		df = pd.read_csv(f'{args.folder}/{args.disease}-Confirmed.csv')
+		df = pd.read_csv(f'{args.disease}-confirmed.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -59,7 +59,7 @@ class Learner(object):
 		"""
 			Load recovered cases
 		"""
-		df = pd.read_csv(f'{args.folder}/{args.disease}-Recovered.csv')
+		df = pd.read_csv(f'{args.disease}-recovered.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -73,7 +73,7 @@ class Learner(object):
 		"""
 			Load data for exposed persons 
 		"""
-		df = pd.read_csv(f'{args.folder}/{args.disease}-Exposed.csv')
+		df = pd.read_csv(f'{args.disease}-exposed.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -292,5 +292,5 @@ def loss_seir(point, confirmed, recovered, exposed):
 	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/13500))**2))
 	return sol_inf/3 + sol_rec/3 + sol_exp/3
 
-my_learner = Learner('US')
+my_learner = Learner('Hong_Kong')
 my_learner.train()
