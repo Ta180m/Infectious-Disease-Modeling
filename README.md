@@ -1,15 +1,19 @@
 # Infectious-Disease-Modeling
 
-Original code by [JasonXu314](https://github.com/JasonXu314/covid-19-project/) and [Lewuathe](https://github.com/Lewuathe/COVID19-SIR)
+A project to modeling infectious diseases with the SIR model and variations.
 
-For SARS in Hong Kong use  
-`./solver2.py --country=Hong_Kong --popcountry=20000 --initial=1000 --disease=SARS --start=4/10/03`
+![](https://raw.githubusercontent.com/Ta180m/Infectious-Disease-Modeling/master/SARS-ESIR.png)
 
-For COVID-19 in the US use  
-`./solver2.py --popcountry=3000000 --initial=100`
-
+![](https://raw.githubusercontent.com/Ta180m/Infectious-Disease-Modeling/master/COVID-19-ESIR.png)
 
 ## Usage
+
+For SARS in Hong Kong use  
+`./solver2.py --country=Hong_Kong --popcountry=20000 --initial=1000 --disease=SARS --start=4/10/03 --mode={SIR,Linear,ESIR,SEIR}`
+
+For COVID-19 in the US use  
+`./solver2.py --popcountry=3000000 --initial=100 --mode={SIR,Linear,ESIR,SEIR}`
+
 ```
 usage: solver2.py [-h] [--mode {SIR,Linear,ESIR,SEIR}]
                   [--data [{Actual,S,I,R,E} [{Actual,S,I,R,E} ...]]]
@@ -57,3 +61,7 @@ optional arguments:
   --initial INITIAL, -I INITIAL
                         initial infected people (defaults to 1)
 ```
+
+## Credits
+
+Original code by [JasonXu314](https://github.com/JasonXu314/covid-19-project/) and [Lewuathe](https://github.com/Lewuathe/COVID19-SIR)

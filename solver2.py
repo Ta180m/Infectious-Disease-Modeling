@@ -18,7 +18,7 @@ parser.add_argument('--disease', '-D', dest = 'disease', default = 'COVID-19', h
 parser.add_argument('--out', '-o', dest = 'out', default = None, help = 'the name of the graph and csv files; defaults to the name of the disease')
 parser.add_argument('--start', '-s', dest = 'start', default = '1/22/20', help = 'the date where the data starts (defaults to the start date of COVID-19 (1/22/20))')
 parser.add_argument('--end', '-e', dest = 'end', default = None, help = 'the date where the data stops (defaults to whereever the input data ends)')
-parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SIRE model; ignored otherwise); none by default')
+parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SEIR model; ignored otherwise); none by default')
 parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None, help = 'the number of days to predict the course of the disease (defaults to None, meaning the model will not predict beyond the given data)')
 parser.add_argument('--country', '-c', dest = 'country', default = 'US', help = 'the country that is being modeled (defaults to US)')
 parser.add_argument('--popcountry', '-pc', dest = 'popcountry', default = '3328200000', help = 'the population of the country (defaults to US population)')
@@ -63,20 +63,6 @@ class Learner(object):
 			Load recovered cases
 		"""
 		df = pd.read_csv(f'{args.folder}/{args.disease}-Recovered.csv')
-		country_df = df[df['Country/Region'] == country]
-
-		if args.end != None:
-			out = country_df.iloc[0].loc[args.start:args.end]
-		else:
-			out = country_df.iloc[0].loc[args.start:]
-		
-		return out
-
-	def load_exposed(self, country):
-		"""
-			Load data for exposed persons 
-		"""
-		df = pd.read_csv(f'{args.folder}/{args.disease}-Exposed.csv')
 		country_df = df[df['Country/Region'] == country]
 
 		if args.end != None:
@@ -131,7 +117,7 @@ class Learner(object):
 		extended_actual = np.concatenate((data.values.flatten(), [0] * (size - len(data.values))))
 
 		if args.mode == 'SEIR':
-			result = solve_ivp(model, [0, size], [S_0,I_0,R_0,E_0], t_eval=np.arange(0, size, 1))
+			result = solve_ivp(model, [0, size], [S_0,I_0,R_0,E_0], t_eval=np.arange(0, size, 1), vectorized=True)
 		else:
 			result = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
 
@@ -150,10 +136,10 @@ class Learner(object):
 		if args.mode == 'Linear':
 			optimal = minimize(
 				loss_linear,
-				[0.001, 0.001],
+				[0.01, 0.01],
 				args=(confirmed_data, recovered_data),
 				method='L-BFGS-B',
-				bounds=[(0.00000001, 0.4), (0.00000001, 0.4)]
+				bounds=[(0.001, 1.0), (0.001, 1.0)]
 			)
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
@@ -161,14 +147,15 @@ class Learner(object):
 			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
-				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
+				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}\n')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'SIR':
 			optimal = minimize(
 				loss_sir,
-				[0.001, 0.001],
+				[0.01, 0.01],
 				args=(confirmed_data, recovered_data),
 				method='L-BFGS-B',
-				bounds=[(0.00000001, 0.4), (0.00000001, 0.4)]
+				bounds=[(0.001, 1.0), (0.001, 1.0)]
 			)
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
@@ -176,14 +163,15 @@ class Learner(object):
 			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
-				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
+				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}\n')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'ESIR':
 			optimal = minimize(
 				loss_esir,
-				[0.001, 0.001, 0.001],
+				[0.01, 0.01, 0.01],
 				args=(confirmed_data, recovered_data),
 				method='L-BFGS-B',
-				bounds=[(0.00000001, 0.4), (0.00000001, 0.4), (0.00000001, 0.4)]
+				bounds=[(0.001, 1.0), (0.001, 1.0), (0.001, 1.0)]
 			)
 			beta, gamma, mu = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu} R0: {beta/(gamma + mu)}')
@@ -191,16 +179,17 @@ class Learner(object):
 			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
-				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
+				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}\n')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'SEIR':
 			# exposed_data = self.load_exposed(self.country)
 
 			optimal = minimize(
 				loss_seir,
-				[0.001, 0.001, 0.001, 0.001],
+				[0.01, 0.01, 0.01, 0.01],
 				args=(confirmed_data, recovered_data),
 				method='L-BFGS-B',
-				bounds=[(0.00000001, 0.4), (0.00000001, 0.4), (0.00000001, 0.4), (0.00000001, 0.4)]
+				bounds=[(0.001, 1.0), (0.001, 1.0), (0.001, 1.0), (0.001, 1.0)]
 			)
 			beta, gamma, mu, sigma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu}, Sigma: {sigma} R0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
@@ -208,7 +197,8 @@ class Learner(object):
 			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
-				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
+				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}\n')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 		fig, ax = plt.subplots(figsize=(15, 10))
 		ax.set_title(f'{args.disease} cases over time ({args.mode} Model)')
 		df.plot(ax=ax)
