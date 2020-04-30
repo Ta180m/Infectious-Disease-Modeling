@@ -6,12 +6,12 @@ using namespace std;
 const int DAYS = 200, ITER = 10000;
 
 // Population size
-const int POP = 2000;
+const int POP = 10000;
 
 // Model parameters
 // Beta = infection rate
 // Gamma = removal rate
-const double beta = 0.42, gamma = 0.25;
+const double beta = 0.3944, gamma = 0.02664;
 
 // Compartments
 double S[DAYS + 1], I[DAYS + 1], R[DAYS + 1];

@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from datetime import datetime, timedelta
 
 import matplotlib.pyplot as plt
@@ -20,16 +21,18 @@ parser.add_argument('--end', '-e', dest = 'end', default = None, help = 'the dat
 parser.add_argument('--incubation', '-i', dest = 'incubation_period', default = None, help = 'the incubation period of the disease (only applicable if using SIRE model; ignored otherwise); none by default')
 parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None, help = 'the number of days to predict the course of the disease (defaults to None, meaning the model will not predict beyond the given data)')
 parser.add_argument('--country', '-c', dest = 'country', default = 'US', help = 'the country that is being modeled (defaults to US)')
-parser.add_argument('--population', '-P', dest = 'population', default = '10000', help = 'the population of the model (defaults to 10000)')
+parser.add_argument('--popcountry', '-pc', dest = 'popcountry', default = '3328200000', help = 'the population of the country (defaults to US population)')
+parser.add_argument('--popmodel', '-pm', dest = 'popmodel', default = '10000', help = 'the population of the model (defaults to 10000)')
+parser.add_argument('--initial', '-I', dest = 'initial', default = '1', help = 'initial infected people (defaults to 1')
 args = parser.parse_args()
 
-S_0 = (int(args.population) - 1) / int(args.population)
-I_0 = 1 / int(args.population)
+# Running a model for a million population is quite hard, so here we've reduced the population and modified the actual stats to match
+correction_factor = int(args.popmodel) / int(args.popcountry)
+
+S_0 = (int(args.popcountry) - int(args.initial)) / int(args.popcountry)
+I_0 = int(args.initial) / int(args.popcountry)
 R_0 = 0
 E_0 = 0
-
-# Running a model for a million population is quite hard, so here we've reduced the population and modified the actual stats to match
-correction_factor = int(args.population) / 3270000 if args.country == 'US' else int(args.population) / 63710000 if args.country == 'Hong_Kong' else 1
 
 class Learner(object):
 	def __init__(self, country):
@@ -155,9 +158,9 @@ class Learner(object):
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
-			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'SIR':
 			optimal = minimize(
@@ -170,9 +173,9 @@ class Learner(object):
 			beta, gamma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, R0: {beta/gamma}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma)
-			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}')
 		elif args.mode == 'ESIR':
 			optimal = minimize(
@@ -185,9 +188,9 @@ class Learner(object):
 			beta, gamma, mu = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu} R0: {beta/(gamma + mu)}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
-			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
 		elif args.mode == 'SEIR':
 			exposed_data = self.load_exposed(self.country)
@@ -202,15 +205,15 @@ class Learner(object):
 			beta, gamma, mu, sigma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu}, Sigma: {sigma} R0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
 			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
-			print(f'Predicted I: {prediction.y[1][-1] * int(args.population)}, Actual I: {extended_actual[-1] * correction_factor}')
+			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
-			with open(f'out/{args.disease}-data.csv', 'w+') as file:
+			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
 		fig, ax = plt.subplots(figsize=(15, 10))
 		ax.set_title(f'{args.disease} cases over time ({args.mode} Model)')
 		df.plot(ax=ax)
-		fig.savefig(f"{args.out if args.out != None else args.disease}.png")
-		df.to_csv(f'out/{args.disease}-prediction.csv')
+		fig.savefig(f"{args.out if args.out != None else args.disease}-{args.mode}.png")
+		df.to_csv(f'out/{args.disease}-{args.mode}-prediction.csv')
 
 def filter_zeroes(arr):
 	out = np.array(arr)
@@ -226,13 +229,13 @@ def compose_df(prediction, actual, correction_factor, index):
 		if data == 'Actual':
 			df_dict['Actual'] = filter_zeroes(actual * correction_factor)
 		elif data == 'S':
-			df_dict['S'] = prediction.y[0] * int(args.population)
+			df_dict['S'] = prediction.y[0] * int(args.popmodel)
 		elif data == 'I':
-			df_dict['I'] = prediction.y[1] * int(args.population)
+			df_dict['I'] = prediction.y[1] * int(args.popmodel)
 		elif data == 'R':
-			df_dict['R'] = prediction.y[2] * int(args.population)
+			df_dict['R'] = prediction.y[2] * int(args.popmodel)
 		elif data == 'E':
-			df_dict['E'] = prediction.y[3] * int(args.population)
+			df_dict['E'] = prediction.y[3] * int(args.popmodel)
 
 	return pd.DataFrame(df_dict, index=index)
 
@@ -247,8 +250,8 @@ def loss_linear(point, confirmed, recovered):
 		R = y[2]
 		return [-beta * S, beta * S - gamma * I, gamma * I]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.popmodel)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_sir(point, confirmed, recovered):
@@ -260,8 +263,8 @@ def loss_sir(point, confirmed, recovered):
 		R = y[2]
 		return [-beta * S * I, beta * S * I - gamma * I, gamma * I]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.popmodel)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_esir(point, confirmed, recovered):
@@ -273,8 +276,8 @@ def loss_esir(point, confirmed, recovered):
 		R = y[2]
 		return [mu - beta * S * I - mu * S, beta * S * I - gamma * I - mu * I, gamma * I - mu * R]
 	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.popmodel)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
 def loss_seir(point, confirmed, recovered, exposed):
@@ -287,9 +290,9 @@ def loss_seir(point, confirmed, recovered, exposed):
 		E = y[3]
 		return [mu - beta * S * I - mu * S, beta * S * I - sigma * E - mu * E, sigma * E * I - gamma * I - mu * I, gamma * I - mu * R]
 	solution = solve_ivp(model, [0, size], [S_0,E_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
-	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.population)))**2))
-	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.population)))**2))
-	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/int(args.population)))**2))
+	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.popmodel)))**2))
+	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
+	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/int(args.popmodel)))**2))
 	return sol_inf/3 + sol_rec/3 + sol_exp/3
 
 my_learner = Learner(args.country)
