@@ -1,6 +1,6 @@
 # Infectious-Disease-Modeling
 
-A project to modeling infectious diseases with the SIR model and variations.
+A project to model infectious diseases with the SIR model and variations.
 
 ![](https://raw.githubusercontent.com/Ta180m/Infectious-Disease-Modeling/master/SARS-ESIR.png)
 
