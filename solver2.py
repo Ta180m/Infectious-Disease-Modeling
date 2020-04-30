@@ -23,7 +23,7 @@ parser.add_argument('--predict', '-p', dest = 'prediction_range', default = None
 parser.add_argument('--country', '-c', dest = 'country', default = 'US', help = 'the country that is being modeled (defaults to US)')
 parser.add_argument('--popcountry', '-pc', dest = 'popcountry', default = '3328200000', help = 'the population of the country (defaults to US population)')
 parser.add_argument('--popmodel', '-pm', dest = 'popmodel', default = '10000', help = 'the population of the model (defaults to 10000)')
-parser.add_argument('--initial', '-I', dest = 'initial', default = '1', help = 'initial infected people (defaults to 1')
+parser.add_argument('--initial', '-I', dest = 'initial', default = '1', help = 'initial infected people (defaults to 1)')
 args = parser.parse_args()
 
 # Running a model for a million population is quite hard, so here we've reduced the population and modified the actual stats to match
@@ -131,7 +131,7 @@ class Learner(object):
 		extended_actual = np.concatenate((data.values.flatten(), [0] * (size - len(data.values))))
 
 		if args.mode == 'SEIR':
-			result = solve_ivp(model, [0, size], [S_0,I_0,R_0, E_0], t_eval=np.arange(0, size, 1))
+			result = solve_ivp(model, [0, size], [S_0,I_0,R_0,E_0], t_eval=np.arange(0, size, 1))
 		else:
 			result = solve_ivp(model, [0, size], [S_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
 
@@ -193,18 +193,18 @@ class Learner(object):
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}')
 		elif args.mode == 'SEIR':
-			exposed_data = self.load_exposed(self.country)
+			# exposed_data = self.load_exposed(self.country)
 
 			optimal = minimize(
 				loss_seir,
-				[0.001, 0.001],
-				args=(confirmed_data, recovered_data, exposed_data),
+				[0.001, 0.001, 0.001, 0.001],
+				args=(confirmed_data, recovered_data),
 				method='L-BFGS-B',
 				bounds=[(0.00000001, 0.4), (0.00000001, 0.4), (0.00000001, 0.4), (0.00000001, 0.4)]
 			)
 			beta, gamma, mu, sigma = optimal.x
 			print(f'Beta: {beta}, Gamma: {gamma}, Mu: {mu}, Sigma: {sigma} R0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}')
-			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu)
+			new_index, extended_actual, prediction = self.predict(confirmed_data, beta = beta, gamma = gamma, mu = mu, sigma = sigma)
 			print(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
@@ -280,7 +280,7 @@ def loss_esir(point, confirmed, recovered):
 	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
 	return sol_inf * 0.5 + sol_rec * 0.5
 
-def loss_seir(point, confirmed, recovered, exposed):
+def loss_seir(point, confirmed, recovered):
 	size = len(confirmed)
 	beta, gamma, mu, sigma = point
 	def model(t, y):
@@ -289,11 +289,11 @@ def loss_seir(point, confirmed, recovered, exposed):
 		R = y[2]
 		E = y[3]
 		return [mu - beta * S * I - mu * S, beta * S * I - sigma * E - mu * E, sigma * E * I - gamma * I - mu * I, gamma * I - mu * R]
-	solution = solve_ivp(model, [0, size], [S_0,E_0,I_0,R_0], t_eval=np.arange(0, size, 1), vectorized=True)
+	solution = solve_ivp(model, [0, size], [S_0,I_0,R_0,E_0], t_eval=np.arange(0, size, 1), vectorized=True)
 	sol_inf = np.sqrt(np.mean((solution.y[1] - (confirmed.values.flatten() * correction_factor/int(args.popmodel)))**2))
 	sol_rec = np.sqrt(np.mean((solution.y[2] - (recovered.values * correction_factor/int(args.popmodel)))**2))
-	sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/int(args.popmodel)))**2))
-	return sol_inf/3 + sol_rec/3 + sol_exp/3
+	# sol_exp = np.sqrt(np.mean((solution.y[3] - (exposed.values * correction_factor/int(args.popmodel)))**2))
+	return sol_inf * 0.5 + sol_rec * 0.5
 
 my_learner = Learner(args.country)
 my_learner.train()
