@@ -148,7 +148,7 @@ class Learner(object):
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}\n')
-				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}\nActual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'SIR':
 			optimal = minimize(
 				loss_sir,
@@ -164,7 +164,7 @@ class Learner(object):
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nR0: {beta/gamma}\n')
-				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}\nActual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'ESIR':
 			optimal = minimize(
 				loss_esir,
@@ -180,7 +180,7 @@ class Learner(object):
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nR0: {beta/(gamma + mu)}\n')
-				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}\nActual I: {extended_actual[-1] * correction_factor}')
 		elif args.mode == 'SEIR':
 			# exposed_data = self.load_exposed(self.country)
 
@@ -198,7 +198,7 @@ class Learner(object):
 			df = compose_df(prediction, extended_actual, correction_factor, new_index)
 			with open(f'out/{args.disease}-{args.mode}-data.csv', 'w+') as file:
 				file.write(f'Beta: {beta}\nGamma: {gamma}\nMu: {mu}\nSigma: {sigma}\nR0: {(beta * sigma)/((mu + gamma) * (mu + sigma))}\n')
-				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}, Actual I: {extended_actual[-1] * correction_factor}')
+				file.write(f'Predicted I: {prediction.y[1][-1] * int(args.popmodel)}\nActual I: {extended_actual[-1] * correction_factor}')
 		fig, ax = plt.subplots(figsize=(15, 10))
 		ax.set_title(f'{args.disease} cases over time ({args.mode} Model)')
 		df.plot(ax=ax)

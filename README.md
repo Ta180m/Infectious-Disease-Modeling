@@ -14,6 +14,7 @@ For SARS in Hong Kong use
 For COVID-19 in the US use  
 `./solver2.py --popcountry=3000000 --initial=100 --mode={SIR,Linear,ESIR,SEIR}`
 
+General usage:
 ```
 usage: solver2.py [-h] [--mode {SIR,Linear,ESIR,SEIR}]
                   [--data [{Actual,S,I,R,E} [{Actual,S,I,R,E} ...]]]
